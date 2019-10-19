@@ -1,17 +1,44 @@
 #include <iostream>
 #include <string>
 #include <WS2tcpip.h>
+#include <thread>
 
+/**********************************************************************************************
+To use this version of the client socket :
+
+1. You will need to change the below IP and port to the one used in the 'TcpConsoleChat' program
+2. Must have compiled and ran the 'TcpConsoleChat' server program before running this one
+
+
+**********************************************************************************************/
 
 #pragma comment (lib, "ws2_32.lib")
 
 #define BUF_SIZE 4000
+void SendResponse(int* socket, bool* const running)
+{
+	std::string response{};
+	//Sleep(50);
+	while (*running)
+	{
+
+		//Type in response to be sent
+		std::getline(std::cin, response);
+
+		//send response your response
+		if ((send(*socket, response.c_str(), response.size(), 0)) == SOCKET_ERROR)
+		{
+			*running = false;
+		}
+		std::cout << "\n";
+	}
+}
 
 int main(void)
 {
 	// Server's IP and port number
-	char IP[] = "172.217.164.206";
-	unsigned int port = 80;
+	char IP[] = "";
+	unsigned int port = 0;
 
 	//Initialize Winsock
 	WSADATA winSock;
@@ -46,14 +73,43 @@ int main(void)
 		return -1;
 	}
 
-	//Send an http GET request to google
-	char request[] = "GET / HTTP/1.1\r\n\r\n";
-	char response[NI_MAXHOST]; ZeroMemory(response, NI_MAXHOST);
+	char msgBuf[BUF_SIZE]; ZeroMemory(msgBuf, BUF_SIZE);
+	bool running = true;
 
-	send(client, request, strlen(request) + 1, 0);
-	recv(client, response, NI_MAXHOST, 0);
+	//Thread to send response message
+	std::thread resThread{ SendResponse, &client, &running };
 
-	std::cout << response << std::endl;
+	int counter = 1;
+	while (running)
+	{
+		ZeroMemory(msgBuf, BUF_SIZE);
+
+		int bytesRecieved = recv(client, msgBuf, BUF_SIZE, 0);
+		if (bytesRecieved == 0)
+		{
+			std::cout << "server disconnected! quitting..\n";
+			running = false;
+			break;
+		}
+		else if (bytesRecieved == SOCKET_ERROR)
+		{
+			std::cout << "recv error #" << WSAGetLastError() << "\nPress enter to continue..";
+			running = false;
+			break;
+		}
+
+		//Display message to console
+		if (counter == 1)
+		{
+			std::cout << msgBuf;
+		}
+		else
+		{
+			std::cout << "\n" << msgBuf << "\n";
+		}
+		counter++;
+	}
+	resThread.join();
 	
 	//close your socket
 	closesocket(client);
@@ -61,6 +117,5 @@ int main(void)
 	//free winsock's allocated resources
 	WSACleanup();
 
-	std::system("pause");
 	return 0;
 }
