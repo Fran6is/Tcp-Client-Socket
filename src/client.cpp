@@ -10,8 +10,8 @@
 int main(void)
 {
 	// Server's IP and port number
-	char IP[] = "";
-	unsigned int port = 0;
+	char IP[] = "172.217.164.206";
+	unsigned int port = 80;
 
 	//Initialize Winsock
 	WSADATA winSock;
@@ -46,15 +46,15 @@ int main(void)
 		return -1;
 	}
 
-	char msgBuf[BUF_SIZE] = "Hello there \r\n";
+	//Send an http GET request to google
+	char request[] = "GET / HTTP/1.1\r\n\r\n";
+	char response[NI_MAXHOST]; ZeroMemory(response, NI_MAXHOST);
 
-	//Send and receive
-	send(client, msgBuf, strlen(msgBuf), 0); ZeroMemory(msgBuf, BUF_SIZE);
-	recv(client, msgBuf, BUF_SIZE, 0);
+	send(client, request, strlen(request) + 1, 0);
+	recv(client, response, NI_MAXHOST, 0);
 
-
-	std::cout << msgBuf << "\n";
-
+	std::cout << response << std::endl;
+	
 	//close your socket
 	closesocket(client);
 
